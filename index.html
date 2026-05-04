@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIRA</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Space+Mono:wght@400;700&family=IBM+Plex+Mono:wght@300;400;600&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --nothing-red: #ff0000;
+            --nothing-bg: #f8f8f8;
+        }
+
+        body {
+            font-family: 'IBM Plex Mono', monospace;
+            background: var(--nothing-bg);
+            color: #000;
+            overflow-x: hidden;
+        }
+
+        .ndot {
+            font-family: 'Space Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            word-spacing: -0.2em;
+            font-weight: 700;
+        }
+
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -10;
+            background-image: radial-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 50%;
+            height: 100vh;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .nothing-btn {
+            background: #000;
+            color: #fff;
+            border-radius: 999px;
+            padding: 18px 48px;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            transition: all 0.3s;
+        }
+
+        .nothing-btn:hover {
+            background: #333;
+            transform: scale(1.02);
+        }
+
+        .nothing-border {
+            border: 1.5px solid #eaeaea;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 40px;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: var(--nothing-red);
+            animation: blink 1s infinite;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
+        .typing-text {
+            display: inline;
+            white-space: pre;
+        }
+
+        .typing-text .char {
+            opacity: 0;
+            transform: translateY(-10px);
+            display: inline-block;
+            transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+        }
+
+        .typing-text .char.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .typing-text .space {
+            display: inline;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+        }
+
+        .typing-text .space.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+
+<body class="antialiased">
+    <div class="grid-bg"></div>
+
+    <!-- Navigation -->
+    <nav
+        class="fixed top-0 w-full z-50 h-24 px-10 md:px-20 flex items-center justify-between border-b border-black/5 bg-white/40 backdrop-blur-xl">
+        <div class="flex items-center gap-4">
+            <div class="w-2 h-2 bg-[#ff0000] rounded-full animate-pulse shadow-[0_0_6px_#ff0000]"></div>
+            <span class="ndot text-xl">LIRA</span>
+        </div>
+        <div class="flex gap-10 font-bold text-xs items-center">
+            <a href="/" class="ndot text-[11px] relative group py-1">
+                HOME
+                <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-[#ff0000] group-hover:w-full transition-all duration-300"></span>
+            </a>
+            <a href="/dashboard.html" class="ndot text-[11px] relative group py-1">
+                DASHBOARD
+                <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-[#ff0000] group-hover:w-full transition-all duration-300"></span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- 3D Canvas Area -->
+    <div id="canvas-container"></div>
+
+    <main class="relative z-20">
+        <!-- Hero Section -->
+        <section class="min-h-screen flex flex-col justify-center px-10 md:px-20 pt-20">
+            <div class="max-w-3xl space-y-12">
+                <p class="ndot text-[12px] text-[#ff0000]">>> PROJECT_LIRA_INITIATED</p>
+                <h1 class="ndot text-5xl md:text-7xl leading-tight">
+                    <span id="typing-target"></span><span class="cursor"></span>
+                </h1>
+                <p class="text-lg md:text-xl font-medium tracking-tight text-slate-500 max-w-xl leading-relaxed">
+                    An AI-powered agent for automated incident diagnosis, classification, and resolution.
+                </p>
+                <div class="flex items-center gap-8 pt-4">
+                    <a href="/dashboard.html" class="nothing-btn">LAUNCH_AGENT</a>
+                    <div class="flex flex-col">
+                        <span class="ndot text-[10px] opacity-30">Status: Operational</span>
+                        <span class="ndot text-[10px] text-green-600">Sync: Stable</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature Grid (Nothing Style) -->
+        <section class="py-32 px-10 md:px-20 space-y-20 bg-white">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <div class="nothing-border rounded-[48px] p-12 hover:bg-slate-50 transition">
+                    <span class="ndot text-[10px] opacity-20 block mb-10">01 / DIAGNOSIS</span>
+                    <h3 class="ndot text-2xl mb-6">Neural Analysis</h3>
+                    <p class="text-sm text-slate-500 leading-relaxed font-medium">Deep-learning log vectorization for
+                        sub-second incident detection.</p>
+                </div>
+                <div class="nothing-border rounded-[48px] p-12 bg-black text-white">
+                    <span class="ndot text-[10px] text-white block mb-10">02 / SEARCH</span>
+                    <h3 class="ndot text-2xl mb-6 text-white">RAG Engine</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed font-medium">Context-aware searching across
+                        millions of past incidents using Pinecone.</p>
+                </div>
+                <div class="nothing-border rounded-[48px] p-12 hover:bg-slate-50 transition">
+                    <span class="ndot text-[10px] opacity-20 block mb-10">03 / ACTION</span>
+                    <h3 class="ndot text-2xl mb-6">Auto-Resolve</h3>
+                    <p class="text-sm text-slate-500 leading-relaxed font-medium">Automated runbook execution to fix
+                        issues before they impact users.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Built On Banner -->
+        <section class="py-20 px-10 md:px-20 border-t border-b border-black/5 bg-white">
+            <div class="max-w-4xl mx-auto">
+                <p class="ndot text-[10px] text-center text-slate-400 mb-12 tracking-[0.4em]">BUILT ON WORLD-CLASS
+                    INFRASTRUCTURE</p>
+                <div class="flex flex-wrap items-center justify-center gap-12 md:gap-20">
+                    <!-- n8n -->
+                    <div
+                        class="flex items-center gap-3 text-slate-400 hover:text-black transition-all duration-300 group">
+                        <svg class="w-5 h-5 opacity-50 group-hover:opacity-100 transition" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path
+                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                        </svg>
+                        <span class="ndot text-sm font-bold">n8n</span>
+                    </div>
+                    <!-- Ollama -->
+                    <div
+                        class="flex items-center gap-3 text-slate-400 hover:text-black transition-all duration-300 group">
+                        <svg class="w-5 h-5 opacity-50 group-hover:opacity-100 transition" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                        <span class="ndot text-sm font-bold">Ollama</span>
+                    </div>
+                    <!-- Groq -->
+                    <div
+                        class="flex items-center gap-3 text-slate-400 hover:text-black transition-all duration-300 group">
+                        <svg class="w-5 h-5 opacity-50 group-hover:opacity-100 transition" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path
+                                d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-5h2v2h-2zm0-8h2v6h-2z" />
+                        </svg>
+                        <span class="ndot text-sm font-bold">Groq</span>
+                    </div>
+                    <!-- Pinecone -->
+                    <div
+                        class="flex items-center gap-3 text-slate-400 hover:text-black transition-all duration-300 group">
+                        <svg class="w-5 h-5 opacity-50 group-hover:opacity-100 transition" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path d="M5 12H3l9-9 9 9h-2v7H5v-7zm2 0v5h10v-5H7z" />
+                        </svg>
+                        <span class="ndot text-sm font-bold">Pinecone</span>
+                    </div>
+                    <!-- Supabase -->
+                    <div
+                        class="flex items-center gap-3 text-slate-400 hover:text-black transition-all duration-300 group">
+                        <svg class="w-5 h-5 opacity-50 group-hover:opacity-100 transition" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span class="ndot text-sm font-bold">Supabase</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="p-10 md:p-20 border-t border-black/5 flex flex-col md:flex-row justify-between items-center gap-10">
+        <p class="ndot text-[10px] opacity-30">© 2026 LIRA (LOG INTELLIGENCE & RESPONSE AGENT)</p>
+        <div class="flex gap-8">
+            <span class="ndot text-[10px] opacity-30">LATEST_BUILD: 2.13.0</span>
+            <span class="ndot text-[10px] opacity-100">STABLE</span>
+        </div>
+    </footer>
+
+    <script>
+        // THREE.JS NEURAL NODE ANIMATION
+        let scene, camera, renderer, sphere, wires;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Create Inner Sphere (Nucleus)
+            const geometry = new THREE.IcosahedronGeometry(2, 2);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0x000000,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.05
+            });
+            sphere = new THREE.Mesh(geometry, material);
+            scene.add(sphere);
+
+            // Create Outer Points (Particles)
+            const pointsGeometry = new THREE.BufferGeometry();
+            const particlesCount = 800;
+            const posArray = new Float32Array(particlesCount * 3);
+
+            for (let i = 0; i < particlesCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 10;
+            }
+
+            pointsGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const pointsMaterial = new THREE.PointsMaterial({
+                size: 0.015,
+                color: 0x000000,
+                transparent: true,
+                opacity: 0.4
+            });
+
+            wires = new THREE.Points(pointsGeometry, pointsMaterial);
+            scene.add(wires);
+
+            camera.position.z = 5;
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            sphere.rotation.y += 0.002;
+            sphere.rotation.x += 0.001;
+            wires.rotation.y += 0.003;
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        init3D();
+
+        // TYPING MODEL ANIMATION
+        const phrases = [
+            "LOG",
+            "INTELLIGENCE&",
+            "RESPONSE AGENT"
+        ];
+
+        function typePhrase(phrase, element, callback) {
+            const chars = phrase.split('');
+            let index = 0;
+
+            function typeChar() {
+                if (index < chars.length) {
+                    if (chars[index] === ' ') {
+                        const space = document.createElement('span');
+                        space.className = 'space';
+                        space.textContent = ' ';
+                        element.appendChild(space);
+
+                        // Trigger animation for space too
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                space.classList.add('visible');
+                            });
+                        });
+                    } else {
+                        const span = document.createElement('span');
+                        span.className = 'char';
+                        span.textContent = chars[index];
+                        element.appendChild(span);
+
+                        // Trigger animation with slight delay for smooth feel
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                span.classList.add('visible');
+                            });
+                        });
+                    }
+                    index++;
+                    setTimeout(typeChar, 60);
+                } else {
+                    if (callback) callback();
+                }
+            }
+
+            typeChar();
+        }
+
+        function typeText() {
+            const target = document.getElementById('typing-target');
+            target.innerHTML = '';
+            let phraseIndex = 0;
+
+            function doPhrase() {
+                if (phraseIndex < phrases.length) {
+                    const phrase = phrases[phraseIndex];
+                    const lineWrapper = document.createElement('span');
+                    lineWrapper.className = 'typing-line';
+                    lineWrapper.style.display = 'inline-block';
+                    target.appendChild(lineWrapper);
+
+                    const span = document.createElement('span');
+                    span.className = 'typing-text';
+                    lineWrapper.appendChild(span);
+
+                    phraseIndex++;
+                    typePhrase(phrase, span, doPhrase);
+
+                    // Add line break after each phrase except the last
+                    if (phraseIndex < phrases.length) {
+                        target.appendChild(document.createElement('br'));
+                    }
+                }
+            }
+
+            doPhrase();
+        }
+
+        // Start typing animation after page load
+        window.addEventListener('load', () => {
+            setTimeout(typeText, 500);
+        });
+
+        // Mouse interaction for the 3D element
+        document.addEventListener('mousemove', (e) => {
+            if (wires) {
+                wires.rotation.x = e.clientY * 0.0005;
+                wires.rotation.y = e.clientX * 0.0005;
+            }
+        });
+    </script>
+</body>
+
+</html>

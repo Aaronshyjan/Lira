@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIRA | Agent Command</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Space+Mono:wght@400;700&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Doto:wght@400;700;900&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root { 
+            --nt-red: #EB1B24; 
+            --nt-bg: #F2F2F2; 
+            --nt-panel: #ffffff; 
+            --nt-border: #E8E8E8; 
+            --nt-dot: #D5D5D5;
+            --nt-radius: 12px;
+        }
+
+        body { 
+            font-family: 'IBM Plex Mono', monospace; 
+            background: var(--nt-bg); 
+            color: #000; 
+            overflow-x: hidden; 
+            font-size: 18px;
+        }
+
+        .ndot { font-family: 'Doto', sans-serif; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 900; }
+        
+        .grid-layer {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
+            background-image: radial-gradient(var(--nt-dot) 1.2px, transparent 1.2px);
+            background-size: 32px 32px;
+            opacity: 0.6;
+        }
+
+        .nothing-card {
+            background: #fff; border: 1px solid var(--nt-border); border-radius: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.01); transition: all 0.5s cubic-bezier(0.2, 1, 0.2, 1);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        
+        .nothing-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.04); border-color: #000; }
+
+        .btn-process {
+            background: #000; color: #fff; border-radius: var(--nt-radius);
+            width: 240px; height: 60px; font-weight: 900; text-transform: uppercase;
+            font-size: 13px; letter-spacing: 0.15em; transition: all 0.3s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-process:hover { transform: scale(1.02); background: #222; }
+
+        .btn-icon-send {
+            background: #000; color: #fff; border-radius: 8px;
+            width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s; cursor: pointer;
+        }
+        .btn-icon-send:hover { transform: scale(1.05); background: #222; }
+
+        .btn-icon {
+            background: #fff; border: 1px solid #E8E8E8; border-radius: 12px;
+            width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s; cursor: pointer;
+        }
+        .btn-icon:hover { background: #000; color: #fff; border-color: #000; }
+
+        .tag-sev { font-size: 10px; font-weight: 900; padding: 6px 16px; border-radius: 6px; border: 1.5px solid #000; color: #000; }
+
+        .step-node {
+            width: 32px; height: 32px; border-radius: 6px; display: flex; 
+            align-items: center; justify-content: center; font-size: 11px; transition: all 0.4s;
+        }
+        
+        .step-line { width: 32px; height: 1px; background: #E0E0E0; }
+        .live-dot { width: 14px; height: 14px; background: #EB1B24; border-radius: 2px; box-shadow: 0 0 10px rgba(235, 27, 36, 0.6); }
+
+        textarea {
+            background: #F1F1F1 !important; border-radius: var(--nt-radius) !important;
+            padding: 24px !important; color: #666; font-size: 14px;
+            line-height: 1.8; outline: none; border: none !important; box-shadow: none !important;
+        }
+
+        /* REMOVE INNER INPUT FRAME */
+        #chat-input {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+        }
+
+        .diagnostic-text {
+            font-family: 'IBM Plex Mono', monospace;
+            color: #000 !important;
+            font-size: 15px;
+            line-height: 1.8;
+            opacity: 1 !important;
+            text-align: justify;
+        }
+
+        .section-label {
+            font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: block;
+        }
+        
+        h2, h3, h4 { font-weight: 900 !important; }
+
+        .scroll-hide::-webkit-scrollbar { width: 0px; height: 0px; }
+        
+        .chat-msg { border-radius: var(--nt-radius); padding: 22px 28px; font-size: 14px; max-width: 85%; line-height: 1.7; position: relative; }
+        .msg-user { background: #F1F1F1; margin-left: auto; color: #222; font-weight: 500; }
+        .msg-bot { background: #000; color: #fff; margin-right: auto; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+        
+        .chat-heading { 
+            display: inline-block; font-weight: 900; text-transform: uppercase; color: #fff; 
+            font-size: 10px; letter-spacing: 0.15em; background: #EB1B24; padding: 4px 12px;
+            border-radius: 4px; margin-top: 18px; margin-bottom: 12px;
+        }
+        .chat-heading:first-child { margin-top: 0; }
+
+        .bot-bullet { display: flex; gap: 12px; align-items: start; margin-top: 10px; }
+        .bot-bullet-dot { width: 6px; height: 6px; background: #EB1B24; border-radius: 1px; margin-top: 8px; shrink: 0; }
+        
+        .chat-timestamp { font-size: 9px; opacity: 0.3; margin-bottom: 8px; display: block; font-weight: 900; letter-spacing: 0.05em; }
+        .msg-user .chat-timestamp { text-align: right; }
+
+        .sev-bar { width: 12px; border-radius: 1px; transition: all 0.5s; }
+        
+        @keyframes softPulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+        .pulse-text { animation: softPulse 2s infinite; }
+    </style>
+</head>
+
+<body class="antialiased">
+    <div class="grid-layer"></div>
+
+    <nav class="fixed top-0 w-full z-50 h-24 px-10 md:px-20 flex items-center justify-between border-b border-black/5 bg-white/40 backdrop-blur-3xl">
+        <div class="flex items-center gap-4">
+            <div class="live-dot animate-pulse"></div>
+            <span class="ndot text-2xl font-black">LIRA // DASHBOARD</span>
+        </div>
+        <div class="flex gap-12 font-bold items-center">
+            <div class="flex items-center gap-3 px-5 py-2.5 bg-black/5 rounded-full">
+                <div id="ws-status-dot" class="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_8px_#22c55e]"></div>
+                <span id="ws-status-text" class="ndot text-[10px] font-black opacity-100">LINK_ACTIVE</span>
+            </div>
+            <a href="/" class="ndot text-[12px] opacity-60 hover:opacity-100 transition tracking-widest text-black">HOME</a>
+            <a href="/dashboard.html" class="ndot text-[12px] opacity-100 text-[#EB1B24] tracking-widest font-black">DASHBOARD</a>
+        </div>
+    </nav>
+
+    <main class="max-w-[1700px] mx-auto pt-32 pb-24 px-6 md:px-20">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <div class="lg:col-span-8 space-y-6">
+                <!-- System Command Center -->
+                <section class="nothing-card p-10 relative">
+                    <div class="flex items-center justify-between mb-8">
+                        <div class="flex items-center gap-6">
+                            <div class="live-dot pulse-text"></div>
+                            <span class="ndot text-[13px] font-black opacity-80">SYSTEM_COMMAND_CENTER</span>
+                        </div>
+                        <span class="ndot text-[11px] text-[#EB1B24] font-black opacity-60">V_2.18_SYNC</span>
+                    </div>
+
+                    <textarea id="log-input" rows="6" class="w-full mb-8 font-mono resize-none" placeholder="INPUT_LOG_STREAM_HERE..."></textarea>
+                    
+                    <div class="flex items-center gap-8">
+                        <div class="flex flex-col">
+                            <button onclick="startAnalysis()" id="btn-process" class="btn-process ndot">PROCESS_AGENT</button>
+                            <div id="status-msg" class="ndot text-[9px] opacity-40 mt-3 ml-4 tracking-widest pulse-text font-black">LIRA_SYSTEM_STABLE</div>
+                        </div>
+
+                        <input type="file" id="file-upload" class="hidden" onchange="handleFileUpload(this)">
+                        <div onclick="document.getElementById('file-upload').click()" class="btn-icon">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"/></svg>
+                        </div>
+
+                        <div class="flex items-center gap-4 ml-auto pr-4">
+                            <div class="flex items-center gap-2">
+                                <div id="step-0" class="step-node bg-black text-white ndot">1</div>
+                                <span class="ndot text-[10px] opacity-100 font-bold">CLEAN</span>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="flex items-center gap-2">
+                                <div id="step-1" class="step-node bg-[#F1F1F1] text-[#A0A0A0] ndot">2</div>
+                                <span class="ndot text-[10px] opacity-40 font-black">VECTOR</span>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="flex items-center gap-2">
+                                <div id="step-2" class="step-node bg-[#F1F1F1] text-[#A0A0A0] ndot">3</div>
+                                <span class="ndot text-[10px] opacity-40 font-black">REASON</span>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="flex items-center gap-2">
+                                <div id="step-3" class="step-node bg-[#F1F1F1] text-[#A0A0A0] ndot">4</div>
+                                <span class="ndot text-[10px] opacity-40 font-black">SYNC</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="nothing-card p-10 h-full">
+                        <h3 class="ndot text-[15px] mb-8 text-black border-b border-black/5 pb-4 font-black">>> AGENT_REASONING_PROFILE</h3>
+                        <div id="root-cause" class="diagnostic-text">LIRA is currently idle. Input a log stream to start diagnosis.</div>
+                    </div>
+                    <div class="nothing-card p-10 h-full">
+                        <div class="flex justify-between items-center mb-8 border-b border-black/5 pb-4">
+                            <h3 id="res-header" class="ndot text-[15px] text-black font-black">>> PRESCRIBED_RESOLUTION</h3>
+                        </div>
+                        <div id="solution" class="diagnostic-text">Awaiting prescribed actions...</div>
+                    </div>
+                </div>
+
+                <!-- Agent Command Center (LINKED TO ANALYSIS) -->
+                <div class="nothing-card h-[650px] border-black/10">
+                    <div class="p-8 pb-4 flex justify-between items-center bg-white border-b border-black/5">
+                        <div class="flex items-center gap-3">
+                            <div class="w-2 h-2 bg-green-500 shadow-[0_0_8px_#2c5]"></div>
+                            <h3 class="ndot text-[12px] font-black tracking-widest">AGENT_COMMAND_CENTER</h3>
+                        </div>
+                        <div class="flex gap-4">
+                            <button onclick="newChat()" class="btn-icon !w-24 !h-8 !rounded-lg !bg-black !text-white !border-0 ndot text-[9px] font-black hover:bg-neutral-800 transition">NEW_CHAT</button>
+                            <span class="ndot text-[9px] opacity-30 font-black pt-2">LINK: STABLE</span>
+                        </div>
+                    </div>
+                    <div id="chat-window" class="flex-1 overflow-y-auto p-8 space-y-10 scroll-hide bg-[#FBFBFB]">
+                         <div class="chat-msg msg-bot">
+                            <span class="chat-timestamp">LIRA_AI // SYS_INIT</span>
+                            <p class="font-medium text-[15px]">Agent bridge active. Input any incident log above or ask a technical question for immediate diagnostic reasoning.</p>
+                         </div>
+                    </div>
+                    <div class="p-8 pt-4">
+                        <div class="bg-white border border-black/20 rounded-xl p-2 flex items-center shadow-sm">
+                            <input type="text" id="chat-input" 
+                                class="flex-1 bg-transparent py-4 px-6 text-[15px] font-medium placeholder:opacity-30" 
+                                placeholder="Send a message to LIRA AI..."
+                                onkeypress="if(event.key === 'Enter') sendChatMessage()">
+                            <button onclick="sendChatMessage()" class="btn-icon-send">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7l5 5m0 0l-5 5m5-5H6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-4 space-y-6">
+                <!-- Metrics -->
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="nothing-card p-10 h-[220px] justify-between">
+                        <p class="ndot text-[11px] opacity-40 font-black">LOGS_SCANNED</p>
+                        <div>
+                            <h2 id="stat-active" class="ndot text-5xl font-black">0</h2>
+                            <p class="ndot text-[10px] text-green-600 font-black tracking-tight" id="stat-trend">0.0% SESSION_DRIFT</p>
+                        </div>
+                    </div>
+                    <div class="nothing-card p-10 h-[220px] justify-between">
+                        <p class="ndot text-[11px] opacity-40 font-black">THREAT_LEVEL</p>
+                        <div>
+                             <div class="flex items-end gap-1.5 h-12 mb-4 font-black">
+                                <div id="sev-bar-1" class="sev-bar bg-[#E0E0E0] h-1/4"></div>
+                                <div id="sev-bar-2" class="sev-bar bg-[#E0E0E0] h-1/4"></div>
+                                <div id="sev-bar-3" class="sev-bar bg-[#E0E0E0] h-1/4"></div>
+                                <div id="sev-bar-4" class="sev-bar bg-[#E0E0E0] h-1/4"></div>
+                                <div id="sev-bar-5" class="sev-bar bg-[#E0E0E0] h-1/4"></div>
+                             </div>
+                             <h4 id="severity-display" class="ndot text-2xl font-black text-slate-400">IDLE</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nothing-card p-10">
+                    <h3 class="ndot text-[13px] opacity-40 mb-8 font-black uppercase tracking-widest">HISTORICAL_RETRIEVAL</h3>
+                    <div id="retrieved-docs" class="space-y-6 max-h-[350px] overflow-y-auto scroll-hide">
+                        <p class="text-[12px] opacity-20 italic font-black">No vector matches.</p>
+                    </div>
+                </div>
+
+                <!-- Workflow Trace -->
+                <div class="nothing-card bg-black p-8 rounded-2xl text-green-500 font-mono text-[11px]">
+                    <div class="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
+                        <span class="ndot text-white/40 font-black">WORKFLOW_TRACE</span>
+                        <div class="animate-pulse font-black">●_LIVE</div>
+                    </div>
+                    <div id="system-trace" class="space-y-2 h-[120px] overflow-y-auto scroll-hide uppercase">
+                        <div class="text-white/20 opacity-40 font-black">[SYSTEM] >> STANDBY_MODE</div>
+                    </div>
+                </div>
+
+                <!-- Telemetry Drift -->
+                <div class="nothing-card p-10 space-y-8">
+                    <h3 class="ndot text-[13px] opacity-40 font-black">TELEMETRY_DRIFT</h3>
+                    <div class="space-y-8">
+                        <div>
+                            <div class="flex justify-between ndot text-[10px] mb-3"><span>LATENCY</span><span id="drift-latency" class="opacity-40 font-black">--</span></div>
+                            <div class="w-full h-1 bg-black/5 rounded-full overflow-hidden"><div id="bar-latency" class="h-full bg-black w-0 transition-all duration-1000"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between ndot text-[10px] mb-3"><span>ERROR_RATE</span><span id="drift-errors" class="opacity-40 font-black">--</span></div>
+                            <div class="w-full h-1 bg-black/5 rounded-full overflow-hidden"><div id="bar-errors" class="h-full bg-red-600 w-0 transition-all duration-1000"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between ndot text-[10px] mb-3"><span>USR_TRAFFIC</span><span id="drift-traffic" class="opacity-40 font-black">--</span></div>
+                            <div class="w-full h-1 bg-black/5 rounded-full overflow-hidden"><div id="bar-traffic" class="h-full bg-black w-0 transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-16 py-12 border-t border-black/5 flex flex-col md:flex-row justify-between items-center gap-8">
+            <p class="ndot text-[10px] opacity-20 uppercase tracking-[0.2em] font-black">© 2026 LIRA (LOG INTELLIGENCE & RESPONSE AGENT)</p>
+            <div class="flex gap-16 items-center">
+                <span class="ndot text-[10px] opacity-20 uppercase font-black">SYSTEM_STABLE</span>
+                <span class="ndot text-[10px] text-green-600 font-black">● BUILD: 2.18.6_X</span>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        let sessionCount = 0;
+        let ws;
+
+        function connectWS() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+            ws.onopen = () => { document.getElementById('ws-status-text').innerText = "LINK_ACTIVE"; };
+            ws.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.type === "status") updateStatus(data.stage, data.msg);
+                    else if (data.type === "result") showResult(data);
+                } catch (err) { console.error("WS Error:", err); }
+            };
+            ws.onclose = () => { setTimeout(connectWS, 2000); };
+        }
+
+        function updateStatus(stage, msg) {
+            const statusDiv = document.getElementById('status-msg');
+            const traceDiv = document.getElementById('system-trace');
+            
+            if(statusDiv) {
+                statusDiv.innerText = msg.toUpperCase().replace(/ /g, '_');
+                statusDiv.classList.add('pulse-text');
+            }
+            
+            if(traceDiv) {
+                const entry = document.createElement('div');
+                entry.className = "text-green-500 opacity-80 font-black mb-1";
+                entry.innerHTML = `<span class="opacity-40">[${new Date().toLocaleTimeString()}]</span> >> ${msg.toUpperCase()}`;
+                traceDiv.prepend(entry);
+                if(traceDiv.children.length > 20) traceDiv.lastElementChild.remove();
+            }
+
+            // Update Progress Steps (1-4)
+            for(let i=0; i<=3; i++) {
+                const el = document.getElementById(`step-${i}`);
+                if (!el) continue;
+                
+                const span = el.nextElementSibling;
+                if(i <= stage) { 
+                    el.classList.remove('bg-[#F1F1F1]', 'text-[#A0A0A0]'); 
+                    el.classList.add('bg-black', 'text-white'); 
+                    if(span) span.style.opacity = "1";
+                } else { 
+                    el.classList.add('bg-[#F1F1F1]', 'text-[#A0A0A0]'); 
+                    el.classList.remove('bg-black', 'text-white'); 
+                    if(span) span.style.opacity = "0.3";
+                }
+            }
+        }
+
+        async function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => { document.getElementById('log-input').value = e.target.result; startAnalysis(); };
+            reader.readAsText(file);
+        }
+
+        async function startAnalysis() {
+            const log = document.getElementById('log-input').value;
+            if(!log) return;
+            
+            // Start fresh chat for each new analysis
+            newChat();
+            
+            const btn = document.getElementById('btn-process');
+            btn.innerHTML = '<span class="animate-pulse font-black">ANALYZING...</span>';
+            btn.disabled = true;
+
+            document.getElementById('root-cause').classList.add('opacity-30');
+            document.getElementById('root-cause').innerHTML = 'Initializing agent bridge...';
+            document.getElementById('solution').innerHTML = 'Processing core response...';
+
+            // Reset Threat Level
+            document.getElementById('severity-display').innerText = "ANALYZING";
+            document.getElementById('severity-display').className = "ndot text-2xl font-black text-slate-400 pulse-text";
+            for(let i=1; i<=5; i++) {
+                const bar = document.getElementById(`sev-bar-${i}`);
+                if(bar) {
+                    bar.style.height = "25%";
+                    bar.style.backgroundColor = "#E0E0E0";
+                }
+            }
+            
+            try {
+                const response = await fetch("/api/analyze", {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({log})
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    showResult(result);
+                }
+            } catch (err) { console.error("Fetch Error:", err); }
+            finally {
+                btn.innerHTML = 'PROCESS_AGENT';
+                btn.disabled = false;
+                document.getElementById('root-cause').classList.remove('opacity-30');
+            }
+        }
+
+        function extractStructuredData(text) {
+            if (!text) return null;
+            // Remove markers like >> AGENT_NAME // TAG
+            const cleanText = text.replace(/^>>.*?\n/g, '').trim();
+            
+            // Try to find JSON block
+            const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                try {
+                    return JSON.parse(jsonMatch[0]);
+                } catch (e) {
+                    console.error("Failed to parse extracted JSON:", e);
+                }
+            }
+            return null;
+        }
+
+        function showResult(data) {
+            sessionCount++;
+            document.getElementById('stat-active').innerText = sessionCount;
+            document.getElementById('stat-trend').innerText = `+${(Math.random()*10).toFixed(1)}% SESSION_DRIFT`;
+
+            const rcEl = document.getElementById('root-cause');
+            const solEl = document.getElementById('solution');
+            const docsEl = document.getElementById('retrieved-docs');
+
+            // --- REASONING AGENT PARSING ---
+            const reasoningData = extractStructuredData(data.root_cause);
+            if (reasoningData) {
+                let html = `
+                    <div class="space-y-6">
+                        <div class="mb-4">
+                            <p class="text-[12px] font-black uppercase tracking-widest mb-2 opacity-40">>> PRIMARY_CAUSE</p>
+                            <p class="text-[18px] font-bold text-black leading-tight">${reasoningData.root_cause || "Analyzing..."}</p>
+                        </div>`;
+                
+                if (reasoningData.explanation && Array.isArray(reasoningData.explanation)) {
+                    html += `
+                        <div class="mb-6">
+                            <p class="text-[12px] font-black uppercase tracking-widest mb-3 opacity-40">>> ANALYSIS_TRACE</p>
+                            <div class="space-y-3">
+                                ${reasoningData.explanation.map(item => `
+                                    <div class="flex gap-3 items-start">
+                                        <div class="w-1.5 h-1.5 bg-black rounded-full mt-2 shrink-0"></div>
+                                        <p class="text-[14px] text-neutral-600 leading-relaxed">${item}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>`;
+                }
+
+                if (reasoningData.prevention && Array.isArray(reasoningData.prevention)) {
+                    html += `
+                        <div>
+                            <p class="text-[12px] font-black uppercase tracking-widest mb-3 opacity-40">>> PREVENTION_STRATEGY</p>
+                            <div class="space-y-3">
+                                ${reasoningData.prevention.map(item => `
+                                    <div class="flex gap-3 items-start">
+                                        <div class="w-1.5 h-1.5 bg-[#EB1B24] rounded-full mt-2 shrink-0"></div>
+                                        <p class="text-[14px] text-neutral-600 leading-relaxed">${item}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>`;
+                }
+                html += `</div>`;
+                rcEl.innerHTML = html;
+            } else {
+                // Fallback to raw text if not JSON
+                const cleanText = (data.root_cause || "").replace(/^>>.*?\n/g, '').trim();
+                rcEl.innerHTML = `<p class="text-[16px] font-medium text-black leading-relaxed">${cleanText || "Analyzing signal..."}</p>`;
+            }
+
+            // --- RECOMMENDATION AGENT PARSING ---
+            const recommendationData = extractStructuredData(data.resolutions);
+            let finalSolHtml = "";
+            
+            if (recommendationData && recommendationData.resolution_steps) {
+                const steps = recommendationData.resolution_steps;
+                finalSolHtml = `
+                    <div class="space-y-6">
+                        <p class="text-[12px] font-black uppercase tracking-widest mb-4 opacity-40">>> RESOLUTION_PIPELINE</p>
+                        ${steps.map((step, idx) => `
+                            <div class="flex gap-5 group">
+                                <div class="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center ndot text-[11px] font-black shrink-0 transition-transform group-hover:scale-110">
+                                    ${idx + 1}
+                                </div>
+                                <div class="pt-2">
+                                    <p class="text-[15px] font-bold text-black mb-1">${step.split(':')[0]}</p>
+                                    <p class="text-[13px] text-neutral-500 font-medium">${step.split(':').slice(1).join(':') || ""}</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>`;
+            } else {
+                // Fallback to existing logic
+                let steps = data.resolutions;
+                const cleanSteps = typeof steps === 'string' ? steps.replace(/^>>.*?\n/g, '').trim() : steps;
+                
+                if (Array.isArray(cleanSteps)) {
+                    finalSolHtml = `
+                        <div class="space-y-6">
+                            <p class="text-[12px] font-black uppercase tracking-widest mb-6 opacity-40">>> RESOLUTION_STEPS</p>
+                            ${cleanSteps.map((step, idx) => `
+                                <div class="flex gap-4">
+                                    <span class="text-black font-black opacity-20">${idx + 1}</span>
+                                    <p class="text-[15px] font-medium text-neutral-800">${step}</p>
+                                </div>
+                            `).join('')}
+                        </div>`;
+                } else {
+                    finalSolHtml = `<div class="p-6 bg-neutral-50 rounded-2xl text-[14px] font-medium">${cleanSteps || "Awaiting recommendation..." }</div>`;
+                }
+            }
+            solEl.innerHTML = finalSolHtml;
+
+            let sev = (data.level || "LOW").toUpperCase();
+            let sevColor = "text-green-600";
+            if (sev === "CRITICAL") sevColor = "text-red-600";
+            else if (sev === "HIGH") sevColor = "text-orange-500";
+            else if (sev === "MEDIUM") sevColor = "text-yellow-500";
+            
+            document.getElementById('severity-display').innerText = sev;
+            document.getElementById('severity-display').className = `ndot text-2xl font-black ${sevColor}`;
+            
+            const configs = { 
+                "CRITICAL": [100, 90, 80, 70, 60], 
+                "HIGH": [100, 75, 50, 25, 25], 
+                "MEDIUM": [60, 45, 30, 20, 15],
+                "LOW": [30, 20, 15, 10, 5] 
+            };
+            const levels = configs[sev] || configs["LOW"];
+            
+            const colorMap = {
+                "CRITICAL": "#EB1B24", // Red
+                "HIGH": "#f97316",     // Orange
+                "MEDIUM": "#eab308",   // Yellow
+                "LOW": "#22c55e"       // Green
+            };
+            const barColor = colorMap[sev] || colorMap["LOW"];
+
+            for(let i=1; i<=5; i++) {
+                const bar = document.getElementById(`sev-bar-${i}`);
+                if(bar) {
+                    bar.style.height = levels[i-1] + "%";
+                    bar.style.backgroundColor = barColor;
+                }
+            }
+
+            if (docsEl && data.matches) {
+                if (data.matches.length === 0) docsEl.innerHTML = '<p class="text-[12px] opacity-20 italic font-black">No vector matches.</p>';
+                else {
+                    docsEl.innerHTML = data.matches.slice(0, 3).map((m, i) => `
+                        <div class="flex items-center justify-between group cursor-pointer border-b border-black/5 pb-5 last:border-0 hover:border-black transition-colors">
+                            <div class="flex items-center gap-5">
+                                <div class="btn-icon !w-10 !h-10 opacity-40 group-hover:bg-black group-hover:text-white transition-all text-[10px] font-black ndot">${i+1}</div>
+                                <div class="flex flex-col">
+                                    <span class="ndot text-[11px] font-black opacity-80">INC_HIST_${Math.floor(Math.random()*999)}</span>
+                                    <span class="text-[10px] opacity-40 font-black">${m.metadata?.text?.substring(0, 40) || "Related incident data..."}...</span>
+                                </div>
+                            </div>
+                            <span class="ndot text-[10px] opacity-40 font-black">${((m.score || 0.9) * 100).toFixed(1)}%</span>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            const impact = { 
+                "CRITICAL": {l:95, e:90, t:10}, 
+                "HIGH": {l:70, e:45, t:30},
+                "MEDIUM": {l:40, e:15, t:60},
+                "LOW": {l:12, e:1, t:95}
+            }[sev] || {l:12, e:1, t:95};
+            document.getElementById('drift-latency').innerText = impact.l + "ms";
+            document.getElementById('bar-latency').style.width = impact.l + "%";
+            document.getElementById('drift-errors').innerText = impact.e + "%";
+            document.getElementById('bar-errors').style.width = impact.e + "%";
+            document.getElementById('drift-traffic').innerText = impact.t + "req/s";
+            document.getElementById('bar-traffic').style.width = impact.t + "%";
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const window = document.getElementById('chat-window');
+            const msg = input.value.trim();
+            if (!msg) return;
+
+            const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            const userMsg = document.createElement('div');
+            userMsg.className = "flex flex-col mb-10";
+            userMsg.innerHTML = `
+                <span class="chat-timestamp msg-user">USER // ${timeStr}</span>
+                <div class="chat-msg msg-user">${msg}</div>
+            `;
+            window.appendChild(userMsg);
+            input.value = "";
+            window.scrollTop = window.scrollHeight;
+
+            const botMsg = document.createElement('div');
+            botMsg.className = "flex flex-col mb-10";
+            botMsg.innerHTML = `
+                <span class="chat-timestamp">LIRA_AI // ${timeStr}</span>
+                <div class="chat-msg msg-bot pulse-text">ANALYZING...</div>
+            `;
+            window.appendChild(botMsg);
+
+            try {
+                const response = await fetch("/api/chat", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg, context: document.getElementById('root-cause').innerText })
+                });
+                const data = await response.json();
+                const bubble = botMsg.querySelector('.chat-msg');
+                bubble.classList.remove('pulse-text');
+                // --- PREMIUM CHAT PARSING ---
+                let raw = data.response;
+                let formatted = "";
+                
+                if (raw.includes("CLASSIFICATION:") || raw.includes("ISSUE:") || raw.includes("ACTION:")) {
+                    formatted = raw
+                        .replace(/CLASSIFICATION:\s*(.*)/gi, '<span class="chat-heading">$1</span>')
+                        .replace(/COMPONENT:\s*(.*)/gi, '<div class="ndot text-[10px] opacity-30 mb-2 font-black">COMP: $1</div>')
+                        .replace(/ISSUE:\s*(.*)/gi, '<div class="font-bold text-[16px] mb-4">$1</div>')
+                        .replace(/CAUSE:\s*(.*)/gi, '<span class="chat-heading">CAUSE</span><p class="mb-4">$1</p>')
+                        .replace(/ACTION:\s*(.*)/gi, '<span class="chat-heading">ACTION</span>')
+                        .replace(/PREVENTION:\s*(.*)/gi, '<span class="chat-heading">PREVENTION</span>')
+                        .replace(/^\* (.*)/gm, '<div class="bot-bullet"><div class="bot-bullet-dot"></div><span>$1</span></div>')
+                        .replace(/\n(?!\s*<)/g, '<br>');
+                } else {
+                    // Just clean markdown-ish bolding and newlines for conversational chat
+                    formatted = raw
+                        .replace(/\*\*(.*?)\*\*/g, '<b class="font-black text-white">$1</b>')
+                        .replace(/\n/g, '<br>');
+                }
+                
+                bubble.innerHTML = formatted;
+                window.scrollTop = window.scrollHeight;
+            } catch (err) { botMsg.querySelector('.chat-msg').innerHTML = "ERROR_BRIDGE_TIMEOUT"; }
+        }
+
+        function formatText(text) {
+            return text.trim()
+                .replace(/\*\*(.*?)\*\*/g, '<b class="text-black font-black">$1</b>')
+                .replace(/^[\*-] (.*)/gm, '<div class="flex items-start gap-4 my-3"><span class="w-2.5 h-2.5 rounded-full bg-red-600 mt-2 shrink-0"></span><span class="text-black leading-relaxed font-bold">$1</span></div>')
+                .replace(/\n/g, '<br>');
+        }
+
+        function newChat() {
+            const window = document.getElementById('chat-window');
+            window.innerHTML = `
+                <div class="chat-msg msg-bot">
+                    <span class="chat-timestamp">LIRA_AI // SYS_INIT</span>
+                    <p class="font-medium text-[15px]">Agent bridge active. Input any incident log above or ask a technical question for immediate diagnostic reasoning.</p>
+                </div>
+            `;
+            const input = document.getElementById('chat-input');
+            if(input) input.value = "";
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            connectWS();
+            console.log("LIRA System Initialized.");
+        };
+    </script>
+</body>
+</html>

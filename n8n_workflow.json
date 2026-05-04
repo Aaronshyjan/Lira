@@ -1,0 +1,468 @@
+{
+  "name": "LIRA (Log Intelligence & Root-cause Analysis)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lira-analysis",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e05c5574-00c2-4f61-bdab-2c957c5c08cd",
+      "name": "Webhook",
+      "webhookId": "f0babef0-a32d-4b87-b128-7c08f1eb382d"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Classify the severity of the following incident log into one of:\nCRITICAL, HIGH, MEDIUM, LOW\n\nIncident Log:\n{{$node[\"Data Preprocessing\"].json.log}}\n\n---\n\n## STRICT RULES\n\n1. **LOG LEVEL OVERRIDE (HIGHEST PRIORITY)**\n\n* If log level = INFO → RETURN LOW\n* INFO logs must NEVER be CRITICAL\n\n2. **RETRY CONTEXT RULE**\n\n* If log contains \"Retrying failed\" AND level = INFO:\n  → RETURN LOW\n  (This indicates recovery in progress, not failure)\n\n3. **ERROR KEYWORD RULE (CONTROLLED)**\n\n* Keywords like ERROR, failed, timeout, etc. → CRITICAL\n\n* BUT ONLY IF:\n\n  * They represent the CURRENT event\n  * AND log level is ERROR/CRITICAL\n\n* DO NOT escalate if:\n\n  * Word \"failed\" appears inside retry message\n  * Context indicates recovery, not failure\n\n4. **CLASSIFICATION LOGIC**\n\n* CRITICAL →\n  Active failure:\n  system down, crash, database failure, timeout, service unavailable\n\n* HIGH →\n  Degraded system:\n  high latency, repeated failures, major feature not working\n\n* MEDIUM →\n  Warnings or partial issues\n\n* LOW →\n  Informational logs, recovery logs, normal operations\n\n---\n\nOUTPUT:\nReturn ONLY one word:\nCRITICAL or HIGH or MEDIUM or LOW",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1648,
+        0
+      ],
+      "id": "4f11ab62-4198-42e5-8f79-2f5dbd341bd5",
+      "name": "Severity Classification"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the LIRA Recommendation Agent. Your task is to suggest precise resolution steps based on the Reasoning Agent's analysis.\n\n[INPUT_ANALYSIS]\n{{$node[\"Groq Reasoning\"].json.text}}\n\n---\n\n## RESOLUTION RULES\n* Provide actionable, component-specific steps.\n* Do not use generic advice.\n* Focus on immediate recovery.\n\n---\n\n## OUTPUT FORMAT (STRICT JSON ONLY)\n{\n  \"resolution_steps\": [\n    \"Action 1: Description\",\n    \"Action 2: Description\",\n    \"Action 3: Description\"\n  ]\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1312,
+        -16
+      ],
+      "id": "45132259-ab65-403e-8bb6-d82b10b0460e",
+      "name": "Groq Recommendation"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the LIRA Reasoning Agent. Your task is to analyze the provided log and identify the root cause with evidence.\n\nLog:\n{{$node[\"Data Preprocessing\"].json.log}}\n\n---\n\n## ANALYSIS RULES\n* Be diagnostic and precise.\n* Use ONLY evidence from the log.\n* If the cause is not explicitly visible, state the most likely technical breakdown based on the error signature.\n\n---\n\n## OUTPUT FORMAT (STRICT JSON ONLY)\n{\n  \"root_cause\": \"<One sentence identifying the technical failure>\",\n  \"explanation\": [\n    \"Evidence point 1\",\n    \"Evidence point 2\",\n    \"Evidence point 3\"\n  ],\n  \"prevention\": [\n    \"Preventative measure 1\",\n    \"Preventative measure 2\"\n  ]\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        960,
+        0
+      ],
+      "id": "1425a221-5833-4640-a0fe-231612d03f39",
+      "name": "Groq Reasoning"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        272
+      ],
+      "id": "0d43bca0-61c7-4b0f-843e-8dad0fc6e7f3",
+      "name": "Groq Model",
+      "credentials": {
+        "groqApi": {
+          "id": "jjcbgT5Gr1iX4zo2",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9c2c47c3-2797-449a-8b51-dd286c31506d",
+              "leftValue": "={{$node[\"Severity Classification\"].json.text}}",
+              "rightValue": "CRITICAL",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2000,
+        0
+      ],
+      "id": "8f4edbfb-ddc5-44e8-ab12-6eeb6ae6ec9e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  primary_issue: $node[\"Groq Reasoning\"].json.text.substring(0, 50),\n  root_cause: $node[\"Groq Reasoning\"].json.text,\n  resolutions: $node[\"Groq Recommendation\"].json.text.split('\\n'),\n  severity: $node[\"Severity Classification\"].json.text\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        -16
+      ],
+      "id": "6b962e81-659d-4b5d-8318-12d666ea1c41",
+      "name": "Format Output"
+    },
+    {
+      "parameters": {
+        "tableId": "incidents",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "timestamp",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            },
+            {
+              "fieldId": "level",
+              "fieldValue": "={{$node[\"Severity Classification\"].json.text}}"
+            },
+            {
+              "fieldId": "container",
+              "fieldValue": "lira-agent"
+            },
+            {
+              "fieldId": "raw_log",
+              "fieldValue": "={{$node[\"Data Preprocessing\"].json.log}}"
+            },
+            {
+              "fieldId": "log_type",
+              "fieldValue": "analysis"
+            },
+            {
+              "fieldId": "raw_log",
+              "fieldValue": "={{$node[\"Data Preprocessing\"].json.log}}"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "={{$node[\"Data Preprocessing\"].json.log.substring(0, 100)}}"
+            },
+            {
+              "fieldId": "cause",
+              "fieldValue": "={{$node[\"Groq Reasoning\"].json.text}}"
+            },
+            {
+              "fieldId": "fix",
+              "fieldValue": "={{$node[\"Groq Recommendation\"].json.text}}"
+            },
+            {
+              "fieldId": "confidence",
+              "fieldValue": "0.95"
+            },
+            {
+              "fieldId": "is_structured",
+              "fieldValue": "false"
+            },
+            {
+              "fieldId": "created_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        -80
+      ],
+      "id": "e65b1c49-3082-449d-84a8-6545cb64b5e5",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "vpwwBBf2RmzE0sgG",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"log\": {{ JSON.stringify($node[\"Data Preprocessing\"].json.log) }},\n  \"root_cause\": {{ JSON.stringify($node[\"Groq Reasoning\"].json.text) }},\n  \"solution\": {{ JSON.stringify($node[\"Groq Recommendation\"].json.text) }},\n  \"severity\": {{ JSON.stringify($node[\"Severity Classification\"].json.text) }},\n  \"matches\": {{ JSON.stringify($node[\"Pinecone\"].json.matches) }}\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2832,
+        -48
+      ],
+      "id": "38d1df4d-60f4-4003-9654-89556b6fc75d",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "sendTo": "aaron.shyjan@btech.christuniversity.in",
+        "subject": "={{$node[\"Severity Classification\"].json.text}} INCIDENT DETECTED - LIRA AGENT",
+        "emailType": "html",
+        "message": "={{ \n`<!DOCTYPE html>\n<html>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">\n  <div style=\"max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;\">\n    <div style=\"background: #000; color: #fff; padding: 20px; text-align: center;\">\n      <h1 style=\"margin: 0; font-size: 20px; letter-spacing: 2px;\">LIRA INCIDENT ALERT</h1>\n    </div>\n    \n    <div style=\"padding: 30px;\">\n      <div style=\"margin-bottom: 25px;\">\n        <p style=\"text-transform: uppercase; font-size: 10px; font-weight: bold; color: #999; margin: 0 0 5px 0;\">Severity Level</p>\n        <span style=\"background: ${$node[\"Severity Classification\"].json.text === 'CRITICAL' ? '#EB1B24' : ($node[\"Severity Classification\"].json.text === 'HIGH' ? '#f97316' : ($node[\"Severity Classification\"].json.text === 'MEDIUM' ? '#eab308' : '#22c55e'))}; color: #fff; padding: 5px 15px; border-radius: 5px; font-weight: bold; font-size: 14px;\">${$node[\"Severity Classification\"].json.text}</span>\n      </div>\n\n      <div style=\"margin-bottom: 25px;\">\n        <h3 style=\"border-bottom: 1px solid #eee; pb: 10px; color: #000;\">📌 Incident Summary</h3>\n        <p style=\"background: #f9f9f9; padding: 15px; border-radius: 5px; font-family: monospace;\">${$node[\"Data Preprocessing\"].json.log}</p>\n      </div>\n\n      <div style=\"margin-bottom: 25px;\">\n        <h3 style=\"border-bottom: 1px solid #eee; pb: 10px; color: #000;\">🧠 Root Cause Analysis</h3>\n        <p>${$node[\"Groq Reasoning\"].json.text}</p>\n      </div>\n\n      <div style=\"margin-bottom: 25px;\">\n        <h3 style=\"border-bottom: 1px solid #eee; pb: 10px; color: #000;\">💡 Recommended Action</h3>\n        <p>${$node[\"Groq Recommendation\"].json.text}</p>\n      </div>\n    </div>\n\n    <div style=\"background: #f4f4f4; padding: 15px; text-align: center; font-size: 11px; color: #999;\">\n      Generated by LIRA (Log Intelligence & Response Agent) // Build 2.18.6_X\n    </div>\n  </div>\n</body>\n</html>` }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2176,
+        -176
+      ],
+      "id": "9ee2197a-35c5-4834-921e-fa6dfa5c3567",
+      "name": "Send a message",
+      "webhookId": "51db91a8-7d81-4d77-9ec7-58b29c82fe07",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zdJbHbR0qWTxQJHZ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://lira-bhb7nwc.svc.aped-4627-b74a.pinecone.io",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Api-Key\": \"pcsk_5Ap8Ce_AnkbQe4DMPvCHGeidEyCvGrrPtZynJTkGyaPfnyJzLDQoqi8qbiY3oFV9gHaAze\",\n  \"Content-Type\": \"application/json\"\n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  vector: $json.embedding,\n  topK: 3,\n  includeMetadata: true\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        656,
+        -128
+      ],
+      "id": "ad490b59-7b1f-4a05-b0dc-e4cd768e9886",
+      "name": "Pinecone"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/embeddings",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Content-Type\": \"application/json\"\n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  model: \"bge-m3\",\n  prompt: $json.log\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        96
+      ],
+      "id": "ef304621-c93e-4d45-ab4a-8317ed97fac7",
+      "name": "Ollama"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  log: $json.body.log,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        -176
+      ],
+      "id": "3adb37b9-60f9-436a-9eac-8b57cb5345e7",
+      "name": "Data Preprocessing"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Data Preprocessing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Recommendation": {
+      "main": [
+        [
+          {
+            "node": "Severity Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Reasoning": {
+      "main": [
+        [
+          {
+            "node": "Groq Recommendation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Groq Reasoning",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Groq Recommendation",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Severity Classification",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Severity Classification": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Output": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone": {
+      "main": [
+        [
+          {
+            "node": "Groq Reasoning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama": {
+      "main": [
+        [
+          {
+            "node": "Pinecone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Preprocessing": {
+      "main": [
+        [
+          {
+            "node": "Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timezone": "Indian/Christmas"
+  },
+  "versionId": "a3163fd6-5563-4cb1-b87f-94ff2fbfda08",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2caefc523720f3f36cc13766537f71cb865d1c9a73d1dcb4e085622a8bc1ca0a"
+  },
+  "id": "3AOac9fsUXd84FM2",
+  "tags": []
+}
